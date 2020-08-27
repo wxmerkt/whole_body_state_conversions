@@ -7,6 +7,7 @@
   </description>
 
   <maintainer email="carlos.mastalli@ad.ec.uk">Carlos Mastalli</maintainer>
+  <maintainer email="wolfgang@robots.ox.ac.uk">Wolfgang Merkt</maintainer>
   <author email="carlos.mastalli@ed.ac.uk">Carlos Mastalli</author>
   <author email="wolfgang@robots.ox.ac.uk">Wolfgang Merkt</author>
   <license>BSD 3-Clause</license>
@@ -15,7 +16,7 @@
 
   <depend>rospy</depend>
   <depend>pinocchio</depend>
-  <depend>whole_body_state_msgs</depend></depend>
+  <depend>whole_body_state_msgs</depend>
   <exec_depend condition="$ROS_PYTHON_VERSION == 2">python-numpy</exec_depend>
   <exec_depend condition="$ROS_PYTHON_VERSION == 3">python3-numpy</exec_depend>
 </package>
