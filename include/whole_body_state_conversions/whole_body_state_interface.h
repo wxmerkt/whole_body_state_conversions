@@ -45,6 +45,7 @@
 
 #include <whole_body_state_msgs/WholeBodyState.h>
 
+namespace whole_body_state_conversions {
 struct ContactState {
  public:
   ContactState() {}
@@ -54,15 +55,35 @@ struct ContactState {
   std::string name;
   pinocchio::Force force = pinocchio::Force::Zero();
   Eigen::Vector3d surface_normal = Eigen::Vector3d(0, 0, 1);
-  double surface_friction;
-  pinocchio::SE3 position = pinocchio::SE3::Identity();  // NOT YET SUPPORTED IN TRANSLATOR !!!
+  double surface_friction;                                 ///< Friction coefficient
+  pinocchio::SE3 position = pinocchio::SE3::Identity();    // NOT YET SUPPORTED IN TRANSLATOR !!!
+  pinocchio::Motion velocity = pinocchio::Motion::Zero();  // NOT YET SUPPORTED IN TRANSLATOR
+  // TODO: Contact type
+};
+typedef std::unordered_map<std::string, whole_body_state_conversions::ContactState> ContactStateMap;
+struct WholeBodyState {
+ public:
+  WholeBodyState() {}
+  WholeBodyState(const int nq, const int nv, const int nu, const int ncontacts = 0)
+      : q(Eigen::VectorXd::Zero(nq)), v(Eigen::VectorXd::Zero(nv)), tau(Eigen::VectorXd(nu)) {
+    contacts.reserve(ncontacts);
+  }
+  // WholeBodyState(pinocchio::Model& pinocchio_model) : ... {}
+  ~WholeBodyState() = default;
+
+  double t = 0.0;                      ///< Time from start (if part of a trajectory)
+  Eigen::VectorXd q;                   ///< Configuration vector (size nq)
+  Eigen::VectorXd v;                   ///< Tangent vector (size nv)
+  Eigen::VectorXd tau;                 ///< Torque vector (size njoints-2)
+  std::vector<ContactState> contacts;  ///< Contact state (p, pd, f, s)
+                                       // p, pd, f, s - or ContactState!
 };
 
 class WholeBodyStateInterface {
  public:
   WholeBodyStateInterface(pinocchio::Model &model) : pinocchio_model_(model), pinocchio_data_(pinocchio_model_) {
     // Setup message
-    msg_.header.frame_id = "world";
+    msg_.header.frame_id = "odom";
     njoints_ = pinocchio_model_.njoints - 2;
     msg_.joints.resize(njoints_);
     for (int i = 0; i < njoints_; ++i) {
@@ -103,7 +124,7 @@ class WholeBodyStateInterface {
    */
   void toMsg(whole_body_state_msgs::WholeBodyState &msg, const double t, const Eigen::VectorXd &q,
              const Eigen::VectorXd &v = Eigen::VectorXd(), const Eigen::VectorXd &tau = Eigen::VectorXd(),
-             std::unordered_map<std::string, ContactState> contacts = {}) {
+             std::unordered_map<std::string, whole_body_state_conversions::ContactState> contacts = {}) {
     if (q.size() != pinocchio_model_.nq) {
       throw std::invalid_argument("Expected q to be " + std::to_string(pinocchio_model_.nq) + " but received " +
                                   std::to_string(q.size()));
@@ -228,6 +249,56 @@ class WholeBodyStateInterface {
     }
   }
 
+  /**
+   * @brief Conversion from whole_body_state_msgs::WholeBodyState to deserialized quantities
+   *
+   * @param msg whole_body_state_msgs::WholeBodyState (reference, will be modified)
+   * @param t Timestep
+   * @param q Configuration vector
+   * @param v Velocity vector
+   * @param tau Torque vector
+   * @param contacts ContactState vector (optional)
+   * @note TODO: Contact type and contact location / velocity are not yet supported.
+   */
+  void fromMsg(const whole_body_state_msgs::WholeBodyState &msg, double &t, Eigen::Ref<Eigen::VectorXd> q,
+               Eigen::Ref<Eigen::VectorXd> v, Eigen::Ref<Eigen::VectorXd> tau,
+               std::vector<ContactState> &contacts /* p, pd, f, s */) {
+    t = msg.time;
+    q.resize(pinocchio_model_.nq);
+    v.resize(pinocchio_model_.nv);
+    tau.resize(pinocchio_model_.njoints - 2);
+    // p, pd, f, s
+
+    // Retrieve the generalized position and velocity, and joint torques
+    q(3) = msg.centroidal.base_orientation.x;
+    q(4) = msg.centroidal.base_orientation.y;
+    q(5) = msg.centroidal.base_orientation.z;
+    q(6) = msg.centroidal.base_orientation.w;
+    v(3) = msg.centroidal.base_angular_velocity.x;
+    v(4) = msg.centroidal.base_angular_velocity.y;
+    v(5) = msg.centroidal.base_angular_velocity.z;
+
+    // TODO: Check msg.joints.size() !!
+    for (std::size_t j = 0; j < msg.joints.size(); ++j) {
+      // TODO: Generalize to different floating-base types!
+      // TODO: Check if joint exists!
+      auto jointId = pinocchio_model_.getJointId(msg.joints[j].name) - 2;
+      q(jointId + 7) = msg.joints[j].position;
+      v(jointId + 6) = msg.joints[j].velocity;
+      tau(jointId) = msg.joints[j].effort;
+    }
+    pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_, q, v);
+    q(0) = msg.centroidal.com_position.x - pinocchio_data_.com[0](0);
+    q(1) = msg.centroidal.com_position.y - pinocchio_data_.com[0](1);
+    q(2) = msg.centroidal.com_position.z - pinocchio_data_.com[0](2);
+    v(0) = msg.centroidal.com_velocity.x - pinocchio_data_.vcom[0](0);
+    v(1) = msg.centroidal.com_velocity.y - pinocchio_data_.vcom[0](1);
+    v(2) = msg.centroidal.com_velocity.z - pinocchio_data_.vcom[0](2);
+
+    // Retrieve the contact information
+    // TODO: Contacts
+  }
+
  private:
   pinocchio::Model pinocchio_model_;
   pinocchio::Data pinocchio_data_;
@@ -235,5 +306,7 @@ class WholeBodyStateInterface {
 
   whole_body_state_msgs::WholeBodyState msg_;
 };
+
+}  // namespace whole_body_state_conversions
 
 #endif  // WHOLE_BODY_STATE_MSGS_CONVERSIONS_H_
