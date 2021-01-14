@@ -71,12 +71,12 @@ struct WholeBodyState {
   // WholeBodyState(pinocchio::Model& pinocchio_model) : ... {}
   ~WholeBodyState() = default;
 
-  double t = 0.0;                      ///< Time from start (if part of a trajectory)
-  Eigen::VectorXd q;                   ///< Configuration vector (size nq)
-  Eigen::VectorXd v;                   ///< Tangent vector (size nv)
-  Eigen::VectorXd tau;                 ///< Torque vector (size njoints-2)
-  std::vector<ContactState> contacts;  ///< Contact state (p, pd, f, s)
-                                       // p, pd, f, s - or ContactState!
+  double t = 0.0;                                          ///< Time from start (if part of a trajectory)
+  Eigen::VectorXd q;                                       ///< Configuration vector (size nq)
+  Eigen::VectorXd v;                                       ///< Tangent vector (size nv)
+  Eigen::VectorXd tau;                                     ///< Torque vector (size njoints-2)
+  whole_body_state_conversions::ContactStateMap contacts;  ///< Contact state (p, pd, f, s)
+                                                           // p, pd, f, s - or ContactState!
 };
 
 class WholeBodyStateInterface {
@@ -262,7 +262,7 @@ class WholeBodyStateInterface {
    */
   void fromMsg(const whole_body_state_msgs::WholeBodyState &msg, double &t, Eigen::Ref<Eigen::VectorXd> q,
                Eigen::Ref<Eigen::VectorXd> v, Eigen::Ref<Eigen::VectorXd> tau,
-               std::vector<ContactState> &contacts /* p, pd, f, s */) {
+               std::unordered_map<std::string, whole_body_state_conversions::ContactState> &contacts) {
     t = msg.time;
     q.resize(pinocchio_model_.nq);
     v.resize(pinocchio_model_.nv);
@@ -296,7 +296,26 @@ class WholeBodyStateInterface {
     v(2) = msg.centroidal.com_velocity.z - pinocchio_data_.vcom[0](2);
 
     // Retrieve the contact information
-    // TODO: Contacts
+    for (const auto &contact : msg.contacts) {
+      // 'p': Contact pose
+      contacts[contact.name].position =
+          pinocchio::SE3(Eigen::Quaterniond(contact.pose.orientation.w, contact.pose.orientation.x,
+                                            contact.pose.orientation.y, contact.pose.orientation.z),
+                         Eigen::Vector3d(contact.pose.position.x, contact.pose.position.y, contact.pose.position.z));
+      // 'pd': Contact velocity
+      contacts[contact.name].velocity = pinocchio::Motion(
+          Eigen::Vector3d(contact.velocity.linear.x, contact.velocity.linear.y, contact.velocity.linear.z),
+          Eigen::Vector3d(contact.velocity.angular.x, contact.velocity.angular.y, contact.velocity.angular.z));
+      // 'f': Contact wrench
+      contacts[contact.name].force =
+          pinocchio::Force(Eigen::Vector3d(contact.wrench.force.x, contact.wrench.force.y, contact.wrench.force.z),
+                           Eigen::Vector3d(contact.wrench.torque.x, contact.wrench.torque.y, contact.wrench.torque.z));
+      // 's': Surface normal and friction coefficient
+      contacts[contact.name].surface_normal.x() = contact.surface_normal.x;
+      contacts[contact.name].surface_normal.y() = contact.surface_normal.y;
+      contacts[contact.name].surface_normal.z() = contact.surface_normal.z;
+      contacts[contact.name].surface_friction = contact.friction_coefficient;
+    }
   }
 
  private:
