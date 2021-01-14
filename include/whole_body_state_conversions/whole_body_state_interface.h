@@ -142,6 +142,8 @@ class WholeBodyStateInterface {
                                   std::to_string(tau.size()));
     }
 
+    msg.time = t;
+
     // Filling the centroidal state
     if (has_velocity) {
       pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_, q);
@@ -264,9 +266,10 @@ class WholeBodyStateInterface {
                Eigen::Ref<Eigen::VectorXd> v, Eigen::Ref<Eigen::VectorXd> tau,
                std::unordered_map<std::string, whole_body_state_conversions::ContactState> &contacts) {
     t = msg.time;
-    q.resize(pinocchio_model_.nq);
-    v.resize(pinocchio_model_.nv);
-    tau.resize(pinocchio_model_.njoints - 2);
+    // TODO: Check dimensions
+    // q.resize(pinocchio_model_.nq);
+    // v.resize(pinocchio_model_.nv);
+    // tau.resize(pinocchio_model_.njoints - 2);
     // p, pd, f, s
 
     // Retrieve the generalized position and velocity, and joint torques
