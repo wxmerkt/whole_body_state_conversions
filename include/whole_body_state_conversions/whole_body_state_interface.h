@@ -13,7 +13,6 @@
 #include <unordered_map>
 
 #include <pinocchio/fwd.hpp>
-
 #include <pinocchio/container/aligned-vector.hpp>
 #include <pinocchio/multibody/data.hpp>
 #include <pinocchio/multibody/model.hpp>
@@ -62,13 +61,13 @@ struct WholeBodyState {
 
 class WholeBodyStateInterface {
  public:
-  WholeBodyStateInterface(pinocchio::Model &model) : pinocchio_model_(model), pinocchio_data_(pinocchio_model_) {
+  WholeBodyStateInterface(pinocchio::Model &model) : model_(model), data_(model_) {
     // Setup message
     msg_.header.frame_id = "odom";
-    njoints_ = pinocchio_model_.njoints - 2;
+    njoints_ = model_.njoints - 2;
     msg_.joints.resize(njoints_);
     for (int i = 0; i < njoints_; ++i) {
-      const std::string &joint_name = pinocchio_model_.names[i + 2];
+      const std::string &joint_name = model_.names[i + 2];
       msg_.joints[i].name = joint_name;
     }
   }
@@ -106,14 +105,14 @@ class WholeBodyStateInterface {
   void toMsg(whole_body_state_msgs::WholeBodyState &msg, const double t, const Eigen::VectorXd &q,
              const Eigen::VectorXd &v = Eigen::VectorXd(), const Eigen::VectorXd &tau = Eigen::VectorXd(),
              std::unordered_map<std::string, whole_body_state_conversions::ContactState> contacts = {}) {
-    if (q.size() != pinocchio_model_.nq) {
-      throw std::invalid_argument("Expected q to be " + std::to_string(pinocchio_model_.nq) + " but received " +
+    if (q.size() != model_.nq) {
+      throw std::invalid_argument("Expected q to be " + std::to_string(model_.nq) + " but received " +
                                   std::to_string(q.size()));
     }
 
     bool has_velocity = v.size() != 0;
-    if (v.size() != 0 && v.size() != pinocchio_model_.nv) {
-      throw std::invalid_argument("Expected v to be 0 or " + std::to_string(pinocchio_model_.nv) + " but received " +
+    if (v.size() != 0 && v.size() != model_.nv) {
+      throw std::invalid_argument("Expected v to be 0 or " + std::to_string(model_.nv) + " but received " +
                                   std::to_string(v.size()));
     }
 
@@ -128,18 +127,18 @@ class WholeBodyStateInterface {
 
     // Filling the centroidal state
     if (has_velocity) {
-      pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_, q);
+      pinocchio::centerOfMass(model_, data_, q);
     } else {
-      pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_, q, v);
+      pinocchio::centerOfMass(model_, data_, q, v);
     }
 
     // Center of mass
-    msg.centroidal.com_position.x = pinocchio_data_.com[0].x();
-    msg.centroidal.com_position.y = pinocchio_data_.com[0].y();
-    msg.centroidal.com_position.z = pinocchio_data_.com[0].z();
-    msg.centroidal.com_velocity.x = has_velocity ? pinocchio_data_.vcom[0].x() : 0.0;
-    msg.centroidal.com_velocity.y = has_velocity ? pinocchio_data_.vcom[0].y() : 0.0;
-    msg.centroidal.com_velocity.z = has_velocity ? pinocchio_data_.vcom[0].z() : 0.0;
+    msg.centroidal.com_position.x = data_.com[0].x();
+    msg.centroidal.com_position.y = data_.com[0].y();
+    msg.centroidal.com_position.z = data_.com[0].z();
+    msg.centroidal.com_velocity.x = has_velocity ? data_.vcom[0].x() : 0.0;
+    msg.centroidal.com_velocity.y = has_velocity ? data_.vcom[0].y() : 0.0;
+    msg.centroidal.com_velocity.z = has_velocity ? data_.vcom[0].z() : 0.0;
     // Base
     msg.centroidal.base_orientation.x = q(3);
     msg.centroidal.base_orientation.y = q(4);
@@ -150,15 +149,14 @@ class WholeBodyStateInterface {
     msg.centroidal.base_angular_velocity.z = has_velocity ? v(5) : 0.0;
 
     // Momenta
-    const pinocchio::Force &momenta = pinocchio::computeCentroidalMomentum(pinocchio_model_, pinocchio_data_);
+    const pinocchio::Force &momenta = pinocchio::computeCentroidalMomentum(model_, data_);
     msg.centroidal.momenta.linear.x = momenta.linear().x();
     msg.centroidal.momenta.linear.y = momenta.linear().y();
     msg.centroidal.momenta.linear.z = momenta.linear().z();
     msg.centroidal.momenta.angular.x = momenta.angular().x();
     msg.centroidal.momenta.angular.y = momenta.angular().y();
     msg.centroidal.momenta.angular.z = momenta.angular().z();
-    const pinocchio::Force &momenta_rate =
-        pinocchio::computeCentroidalMomentumTimeVariation(pinocchio_model_, pinocchio_data_);
+    const pinocchio::Force &momenta_rate = pinocchio::computeCentroidalMomentumTimeVariation(model_, data_);
     msg.centroidal.momenta_rate.linear.x = has_velocity ? momenta_rate.linear().x() : 0.0;
     msg.centroidal.momenta_rate.linear.y = has_velocity ? momenta_rate.linear().y() : 0.0;
     msg.centroidal.momenta_rate.linear.z = has_velocity ? momenta_rate.linear().z() : 0.0;
@@ -188,18 +186,18 @@ class WholeBodyStateInterface {
       msg.contacts[i].name = contact_name;
 
       // Pose
-      pinocchio::FrameIndex frame_id = pinocchio_model_.getFrameId(msg.contacts[i].name);
-      if (static_cast<int>(frame_id) > pinocchio_model_.nframes) {
+      pinocchio::FrameIndex frame_id = model_.getFrameId(msg.contacts[i].name);
+      if (static_cast<int>(frame_id) > model_.nframes) {
         throw std::runtime_error("Frame '" + contact_name + "' not found.");
       }
 
       // TODO: Option to retrieve the contact position from an argument (map)
-      const pinocchio::SE3 &oMf = pinocchio::updateFramePlacement(pinocchio_model_, pinocchio_data_, frame_id);
+      const pinocchio::SE3 &oMf = pinocchio::updateFramePlacement(model_, data_, frame_id);
       pinocchio::SE3::Quaternion oMf_quaternion(oMf.rotation());
 
       // TODO: Option to retrieve the contact velocity from an argument (map)
-      pinocchio::Motion ovf = pinocchio::getFrameVelocity(pinocchio_model_, pinocchio_data_, frame_id,
-                                                          pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
+      pinocchio::Motion ovf =
+          pinocchio::getFrameVelocity(model_, data_, frame_id, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
 
       // Storing the contact position and velocity inside the message
       msg.contacts[i].pose.position.x = oMf.translation().x();
@@ -251,9 +249,9 @@ class WholeBodyStateInterface {
                std::unordered_map<std::string, whole_body_state_conversions::ContactState> &contacts) {
     t = msg.time;
     // TODO: Check dimensions
-    // q.resize(pinocchio_model_.nq);
-    // v.resize(pinocchio_model_.nv);
-    // tau.resize(pinocchio_model_.njoints - 2);
+    // q.resize(model_.nq);
+    // v.resize(model_.nv);
+    // tau.resize(model_.njoints - 2);
     // p, pd, f, s
 
     // Retrieve the generalized position and velocity, and joint torques
@@ -269,18 +267,18 @@ class WholeBodyStateInterface {
     for (std::size_t j = 0; j < msg.joints.size(); ++j) {
       // TODO: Generalize to different floating-base types!
       // TODO: Check if joint exists!
-      auto jointId = pinocchio_model_.getJointId(msg.joints[j].name) - 2;
+      auto jointId = model_.getJointId(msg.joints[j].name) - 2;
       q(jointId + 7) = msg.joints[j].position;
       v(jointId + 6) = msg.joints[j].velocity;
       tau(jointId) = msg.joints[j].effort;
     }
-    pinocchio::centerOfMass(pinocchio_model_, pinocchio_data_, q, v);
-    q(0) = msg.centroidal.com_position.x - pinocchio_data_.com[0](0);
-    q(1) = msg.centroidal.com_position.y - pinocchio_data_.com[0](1);
-    q(2) = msg.centroidal.com_position.z - pinocchio_data_.com[0](2);
-    v(0) = msg.centroidal.com_velocity.x - pinocchio_data_.vcom[0](0);
-    v(1) = msg.centroidal.com_velocity.y - pinocchio_data_.vcom[0](1);
-    v(2) = msg.centroidal.com_velocity.z - pinocchio_data_.vcom[0](2);
+    pinocchio::centerOfMass(model_, data_, q, v);
+    q(0) = msg.centroidal.com_position.x - data_.com[0](0);
+    q(1) = msg.centroidal.com_position.y - data_.com[0](1);
+    q(2) = msg.centroidal.com_position.z - data_.com[0](2);
+    v(0) = msg.centroidal.com_velocity.x - data_.vcom[0](0);
+    v(1) = msg.centroidal.com_velocity.y - data_.vcom[0](1);
+    v(2) = msg.centroidal.com_velocity.z - data_.vcom[0](2);
 
     // Retrieve the contact information
     for (const auto &contact : msg.contacts) {
@@ -306,11 +304,11 @@ class WholeBodyStateInterface {
   }
 
  private:
-  pinocchio::Model pinocchio_model_;
-  pinocchio::Data pinocchio_data_;
-  int njoints_;
+  pinocchio::Model model_;  ///< Pinocchio model
+  pinocchio::Data data_;    ///< Pinocchio data
+  std::size_t njoints_;     ///< Number of joints
 
-  whole_body_state_msgs::WholeBodyState msg_;
+  whole_body_state_msgs::WholeBodyState msg_;  ///< ROS message that contains the whole-body state
 };
 
 }  // namespace whole_body_state_conversions
