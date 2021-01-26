@@ -157,13 +157,11 @@ class WholeBodyStateInterface {
       throw std::invalid_argument("Expected q to be " + std::to_string(model_.nq) + " but received " +
                                   std::to_string(q.size()));
     }
-
     bool has_velocity = v.size() != 0;
     if (v.size() != 0 && v.size() != model_.nv) {
       throw std::invalid_argument("Expected v to be 0 or " + std::to_string(model_.nv) + " but received " +
                                   std::to_string(v.size()));
     }
-
     bool has_torque = tau.size() != 0;
     if (tau.size() != 0 && static_cast<std::size_t>(tau.size()) != njoints_) {
       throw std::invalid_argument("Expected tau to be 0 or " + std::to_string(njoints_) + " but received " +
@@ -303,12 +301,29 @@ class WholeBodyStateInterface {
   void fromMsg(const whole_body_state_msgs::WholeBodyState &msg, double &t, Eigen::Ref<Eigen::VectorXd> q,
                Eigen::Ref<Eigen::VectorXd> v, Eigen::Ref<Eigen::VectorXd> tau,
                std::unordered_map<std::string, whole_body_state_conversions::ContactState> &contacts) {
+    // Check dimensions
+    if (q.size() != model_.nq) {
+      throw std::invalid_argument("Expected q to be " + std::to_string(model_.nq) + " but received " +
+                                  std::to_string(q.size()));
+    }
+    if (v.size() != model_.nv) {
+      throw std::invalid_argument("Expected v to be " + std::to_string(model_.nv) + " but received " +
+                                  std::to_string(v.size()));
+    }
+    if (tau.size() != model_.njoints - 2) {
+      throw std::invalid_argument("Expected tau to be " + std::to_string(model_.njoints - 2) + " but received " +
+                                  std::to_string(tau.size()));
+    }
+    if (msg.joints.size() != static_cast<std::size_t>(model_.njoints - 2)) {
+      throw std::invalid_argument("Expected msg.joints to be " + std::to_string(model_.njoints - 2) +
+                                  " but received " + std::to_string(msg.joints.size()));
+    }
+    if (msg.contacts.size() != contacts.size()) {
+      throw std::invalid_argument("Expected msg.contacts to be " + std::to_string(contacts.size()) + " but received " +
+                                  std::to_string(msg.contacts.size()));
+    }
+
     t = msg.time;
-    // TODO: Check dimensions
-    // q.resize(model_.nq);
-    // v.resize(model_.nv);
-    // tau.resize(model_.njoints - 2);
-    // p, pd, f, s
 
     // Retrieve the generalized position and velocity, and joint torques
     q(3) = msg.centroidal.base_orientation.x;
@@ -319,7 +334,6 @@ class WholeBodyStateInterface {
     v(4) = msg.centroidal.base_angular_velocity.y;
     v(5) = msg.centroidal.base_angular_velocity.z;
 
-    // TODO: Check msg.joints.size() !!
     for (std::size_t j = 0; j < msg.joints.size(); ++j) {
       // TODO: Generalize to different floating-base types!
       // TODO: Check if joint exists!
