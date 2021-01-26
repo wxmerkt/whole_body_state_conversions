@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <unordered_map>
+#include <cmath>
 
 #include <pinocchio/fwd.hpp>
 #include <pinocchio/container/aligned-vector.hpp>
@@ -37,15 +38,37 @@ struct ContactState {
    *
    * @param[in] name  Contact name
    */
-  ContactState(const std::string &name) : name(name) {}
+  ContactState(const std::string name) : name_(name) {}
+
+  /**
+   * @copybrief ContactState()
+   *
+   * @param[in] name              Contact name
+   * @param[in] position          Contact position
+   * @param[in] velocity          Contact velocity
+   * @param[in] force             Contact force
+   * @param[in] surface_normal    Normal vector at the contact surface
+   * @param[in] surface_friction  Friction coefficient of the contact surface
+   */
+  ContactState(const std::string name, const pinocchio::SE3 &position, const pinocchio::Motion &velocity,
+               const pinocchio::Force &force, const Eigen::Vector3d &surface_normal, const double surface_friction)
+      : name_(name),
+        position(position),
+        velocity(velocity),
+        force(force),
+        surface_normal(surface_normal),
+        surface_friction(surface_friction) {}
   ~ContactState() = default;
 
-  std::string name;
-  pinocchio::Force force = pinocchio::Force::Zero();
-  Eigen::Vector3d surface_normal = Eigen::Vector3d(0, 0, 1);
-  double surface_friction;                                 ///< Friction coefficient
-  pinocchio::SE3 position = pinocchio::SE3::Identity();    // NOT YET SUPPORTED IN TRANSLATOR !!!
-  pinocchio::Motion velocity = pinocchio::Motion::Zero();  // NOT YET SUPPORTED IN TRANSLATOR
+  std::string name_;
+  pinocchio::SE3 position =
+      pinocchio::SE3(NAN * Eigen::Matrix3d::Identity(), Eigen::Vector3d(NAN, NAN, NAN));  ///< Contact position
+  pinocchio::Motion velocity =
+      pinocchio::Motion(Eigen::Vector3d(NAN, NAN, NAN), Eigen::Vector3d(NAN, NAN, NAN));  ///< Contact velocity
+  pinocchio::Force force =
+      pinocchio::Force(Eigen::Vector3d(NAN, NAN, NAN), Eigen::Vector3d(NAN, NAN, NAN));  ///< Contact force
+  Eigen::Vector3d surface_normal = Eigen::Vector3d(NAN, NAN, NAN);  ///< Normal vector at the contact surface
+  double surface_friction;                                          ///< Friction coefficient of the contact surface
   // TODO: Contact type
 };
 
@@ -212,39 +235,56 @@ class WholeBodyStateInterface {
       if (static_cast<int>(frame_id) > model_.nframes) {
         throw std::runtime_error("Frame '" + contact_name + "' not found.");
       }
-      // TODO: Option to retrieve the contact position from an argument (map)
-      const pinocchio::SE3 &oMf = pinocchio::updateFramePlacement(model_, data_, frame_id);
-      pinocchio::SE3::Quaternion oMf_quaternion(oMf.rotation());
-      // TODO: Option to retrieve the contact velocity from an argument (map)
-      pinocchio::Motion ovf =
-          pinocchio::getFrameVelocity(model_, data_, frame_id, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
+      if (!isnan(contact.position.translation().norm())) {
+        position_tmp_ = contact.position;
+      } else {
+        position_tmp_ = pinocchio::updateFramePlacement(model_, data_, frame_id);
+      }
+      if (!isnan(contact.velocity.toVector().norm())) {
+        velocity_tmp_ = contact.velocity;
+      } else {
+        velocity_tmp_ =
+            pinocchio::getFrameVelocity(model_, data_, frame_id, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
+      }
+      force_tmp_ = pinocchio::Force::Zero();
+      if (!isnan(contact.force.toVector().norm())) {
+        force_tmp_ = contact.force;
+      }
+      if (!isnan(contact.surface_normal.norm())) {
+        nsurf_tmp_ = contact.surface_normal;
+      } else {
+        nsurf_tmp_ = Eigen::Vector3d::UnitZ();
+      }
+      double surface_friction = 1.;
+      if (contact.surface_friction != NAN) {
+        surface_friction = contact.surface_friction;
+      }
       // Storing the contact position and velocity inside the message
-      msg.contacts[i].pose.position.x = oMf.translation().x();
-      msg.contacts[i].pose.position.y = oMf.translation().y();
-      msg.contacts[i].pose.position.z = oMf.translation().z();
-      msg.contacts[i].pose.orientation.x = oMf_quaternion.x();
-      msg.contacts[i].pose.orientation.y = oMf_quaternion.y();
-      msg.contacts[i].pose.orientation.z = oMf_quaternion.z();
-      msg.contacts[i].pose.orientation.w = oMf_quaternion.w();
-      msg.contacts[i].velocity.linear.x = ovf.linear().x();
-      msg.contacts[i].velocity.linear.y = ovf.linear().y();
-      msg.contacts[i].velocity.linear.z = ovf.linear().z();
-      msg.contacts[i].velocity.angular.x = ovf.angular().x();
-      msg.contacts[i].velocity.angular.y = ovf.angular().y();
-      msg.contacts[i].velocity.angular.z = ovf.angular().z();
-      // Surface properties
-      msg.contacts[i].friction_coefficient = contact.surface_friction;
-      msg.contacts[i].surface_normal.x = contact.surface_normal.x();
-      msg.contacts[i].surface_normal.y = contact.surface_normal.y();
-      msg.contacts[i].surface_normal.z = contact.surface_normal.z();
-      // Contact Force/Torque
+      pinocchio::SE3::Quaternion quaternion(position_tmp_.rotation());
+      msg.contacts[i].pose.position.x = position_tmp_.translation().x();
+      msg.contacts[i].pose.position.y = position_tmp_.translation().y();
+      msg.contacts[i].pose.position.z = position_tmp_.translation().z();
+      msg.contacts[i].pose.orientation.x = quaternion.x();
+      msg.contacts[i].pose.orientation.y = quaternion.y();
+      msg.contacts[i].pose.orientation.z = quaternion.z();
+      msg.contacts[i].pose.orientation.w = quaternion.w();
+      msg.contacts[i].velocity.linear.x = velocity_tmp_.linear().x();
+      msg.contacts[i].velocity.linear.y = velocity_tmp_.linear().y();
+      msg.contacts[i].velocity.linear.z = velocity_tmp_.linear().z();
+      msg.contacts[i].velocity.angular.x = velocity_tmp_.angular().x();
+      msg.contacts[i].velocity.angular.y = velocity_tmp_.angular().y();
+      msg.contacts[i].velocity.angular.z = velocity_tmp_.angular().z();
       // msg.contacts[i].type = TODO: Type!
-      msg.contacts[i].wrench.force.x = contact.force.linear().x();
-      msg.contacts[i].wrench.force.y = contact.force.linear().y();
-      msg.contacts[i].wrench.force.z = contact.force.linear().z();
-      msg.contacts[i].wrench.torque.x = contact.force.angular().x();
-      msg.contacts[i].wrench.torque.y = contact.force.angular().y();
-      msg.contacts[i].wrench.torque.z = contact.force.angular().z();
+      msg.contacts[i].wrench.force.x = force_tmp_.linear().x();
+      msg.contacts[i].wrench.force.y = force_tmp_.linear().y();
+      msg.contacts[i].wrench.force.z = force_tmp_.linear().z();
+      msg.contacts[i].wrench.torque.x = force_tmp_.angular().x();
+      msg.contacts[i].wrench.torque.y = force_tmp_.angular().y();
+      msg.contacts[i].wrench.torque.z = force_tmp_.angular().z();
+      msg.contacts[i].surface_normal.x = nsurf_tmp_.x();
+      msg.contacts[i].surface_normal.y = nsurf_tmp_.y();
+      msg.contacts[i].surface_normal.z = nsurf_tmp_.z();
+      msg.contacts[i].friction_coefficient = surface_friction;
       ++i;
     }
   }
@@ -298,20 +338,20 @@ class WholeBodyStateInterface {
 
     // Retrieve the contact information
     for (const auto &contact : msg.contacts) {
-      // 'p': Contact pose
+      // Contact pose
       contacts[contact.name].position =
           pinocchio::SE3(Eigen::Quaterniond(contact.pose.orientation.w, contact.pose.orientation.x,
                                             contact.pose.orientation.y, contact.pose.orientation.z),
                          Eigen::Vector3d(contact.pose.position.x, contact.pose.position.y, contact.pose.position.z));
-      // 'pd': Contact velocity
+      // Contact velocity
       contacts[contact.name].velocity = pinocchio::Motion(
           Eigen::Vector3d(contact.velocity.linear.x, contact.velocity.linear.y, contact.velocity.linear.z),
           Eigen::Vector3d(contact.velocity.angular.x, contact.velocity.angular.y, contact.velocity.angular.z));
-      // 'f': Contact wrench
+      // Contact wrench
       contacts[contact.name].force =
           pinocchio::Force(Eigen::Vector3d(contact.wrench.force.x, contact.wrench.force.y, contact.wrench.force.z),
                            Eigen::Vector3d(contact.wrench.torque.x, contact.wrench.torque.y, contact.wrench.torque.z));
-      // 's': Surface normal and friction coefficient
+      // Surface normal and friction coefficient
       contacts[contact.name].surface_normal.x() = contact.surface_normal.x;
       contacts[contact.name].surface_normal.y() = contact.surface_normal.y;
       contacts[contact.name].surface_normal.z() = contact.surface_normal.z;
@@ -325,6 +365,11 @@ class WholeBodyStateInterface {
   std::size_t njoints_;     ///< Number of joints
 
   whole_body_state_msgs::WholeBodyState msg_;  ///< ROS message that contains the whole-body state
+
+  pinocchio::SE3 position_tmp_;     ///< Temporal variable that stores the contact position
+  pinocchio::Motion velocity_tmp_;  ///< Temporal variable that stores the contact velocity
+  pinocchio::Force force_tmp_;      ///< Temporal variable that stores the contact force
+  Eigen::Vector3d nsurf_tmp_;       ///< Temporal variable that stores the surface normal
 };
 
 }  // namespace whole_body_state_conversions
