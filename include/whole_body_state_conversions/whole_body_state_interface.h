@@ -25,6 +25,7 @@
 #include <whole_body_state_msgs/WholeBodyState.h>
 
 namespace whole_body_state_conversions {
+
 struct ContactState {
  public:
   ContactState() {}
@@ -39,11 +40,12 @@ struct ContactState {
   pinocchio::Motion velocity = pinocchio::Motion::Zero();  // NOT YET SUPPORTED IN TRANSLATOR
   // TODO: Contact type
 };
+
 typedef std::unordered_map<std::string, whole_body_state_conversions::ContactState> ContactStateMap;
 struct WholeBodyState {
  public:
   WholeBodyState() {}
-  WholeBodyState(const int nq, const int nv, const int nu, const int ncontacts = 0)
+  WholeBodyState(const std::size_t nq, const std::size_t nv, const std::size_t nu, const std::size_t ncontacts = 0)
       : q(Eigen::VectorXd::Zero(nq)), v(Eigen::VectorXd::Zero(nv)), tau(Eigen::VectorXd(nu)) {
     contacts.reserve(ncontacts);
   }
@@ -116,7 +118,7 @@ class WholeBodyStateInterface {
     }
 
     bool has_torque = tau.size() != 0;
-    if (tau.size() != 0 && tau.size() != njoints_) {
+    if (tau.size() != 0 && static_cast<std::size_t>(tau.size()) != njoints_) {
       throw std::invalid_argument("Expected tau to be 0 or " + std::to_string(njoints_) + " but received " +
                                   std::to_string(tau.size()));
     }
@@ -164,13 +166,15 @@ class WholeBodyStateInterface {
     msg.centroidal.momenta_rate.angular.y = has_velocity ? momenta_rate.angular().y() : 0.0;
     msg.centroidal.momenta_rate.angular.z = has_velocity ? momenta_rate.angular().z() : 0.0;
 
-    // Joints
-    if (static_cast<int>(msg.joints.size()) != njoints_) msg.joints.resize(njoints_);
-    for (int i = 0; i < njoints_; ++i) {
-      msg.joints[i].name = pinocchio_model_.names[2 + i];
-      msg.joints[i].position = q(pinocchio_model_.joints[1].nq() + i);
-      msg.joints[i].velocity = has_velocity ? v(pinocchio_model_.joints[1].nv() + i) : 0.0;
-      msg.joints[i].effort = has_torque ? tau(i) : 0.0;
+    // Filling the joint state
+    if (msg.joints.size() != njoints_) {
+      msg.joints.resize(njoints_);
+    }
+    for (std::size_t j = 0; j < njoints_; ++j) {
+      msg.joints[j].name = model_.names[2 + j];
+      msg.joints[j].position = q(model_.joints[1].nq() + j);
+      msg.joints[j].velocity = has_velocity ? v(model_.joints[1].nv() + j) : 0.0;
+      msg.joints[j].effort = has_torque ? tau(j) : 0.0;
     }
 
     // Contacts
