@@ -27,8 +27,17 @@ namespace whole_body_state_conversions {
 
 struct ContactState {
  public:
+  /**
+   * @brief Initialize the data structure for the contact state
+   */
   ContactState() {}
-  ContactState(const std::string &name_in) : name(name_in) {}
+
+  /**
+   * @copybrief ContactState()
+   *
+   * @param[in] name  Contact name
+   */
+  ContactState(const std::string &name) : name(name) {}
   ~ContactState() = default;
 
   std::string name;
@@ -41,14 +50,25 @@ struct ContactState {
 };
 
 typedef std::unordered_map<std::string, whole_body_state_conversions::ContactState> ContactStateMap;
+
 struct WholeBodyState {
  public:
+  /**
+   * @brief Initialize the data structure for the whole-body state
+   */
   WholeBodyState() {}
-  WholeBodyState(const std::size_t nq, const std::size_t nv, const std::size_t nu, const std::size_t ncontacts = 0)
+
+  /**
+   * @copybrief WholeBodyState()
+   *
+   * @param[in] nq  Dimension of the configuration tuple
+   * @param[in] nv  Dimension of the velocity vector
+   * @param[in] nc  Number of contacts
+   */
+  WholeBodyState(const std::size_t nq, const std::size_t nv, const std::size_t nu, const std::size_t nc = 0)
       : q(Eigen::VectorXd::Zero(nq)), v(Eigen::VectorXd::Zero(nv)), tau(Eigen::VectorXd(nu)) {
-    contacts.reserve(ncontacts);
+    contacts.reserve(nc);
   }
-  // WholeBodyState(pinocchio::Model& pinocchio_model) : ... {}
   ~WholeBodyState() = default;
 
   double t = 0.0;                                          ///< Time from start (if part of a trajectory)
@@ -61,26 +81,31 @@ struct WholeBodyState {
 
 class WholeBodyStateInterface {
  public:
-  WholeBodyStateInterface(pinocchio::Model &model) : model_(model), data_(model_) {
+  /**
+   * @brief Initialize the interface for the whole-body state
+   *
+   * @param[in] model     Pinocchio model
+   * @param[in] frame_id  Frame name of the inertial system (default: odom)
+   */
+  WholeBodyStateInterface(pinocchio::Model &model, const std::string frame_id = "odom") : model_(model), data_(model_) {
     // Setup message
-    msg_.header.frame_id = "odom";
+    msg_.header.frame_id = frame_id;
     njoints_ = model_.njoints - 2;
     msg_.joints.resize(njoints_);
-    for (int i = 0; i < njoints_; ++i) {
-      const std::string &joint_name = model_.names[i + 2];
-      msg_.joints[i].name = joint_name;
+    for (std::size_t j = 0; j < njoints_; ++j) {
+      msg_.joints[j].name = model_.names[j + 2];
     }
   }
 
   /**
-   * @brief Conversion from vectors to whole_body_state_msgs::WholeBodyState
+   * @brief Conversion from vectors to `whole_body_state_msgs::WholeBodyState`
    *
-   * @param t Timestep
-   * @param q Configuration vector
-   * @param v Velocity vector (optional)
-   * @param tau Torque vector (optional)
-   * @param contacts ContactState vector (optional)
-   * @return whole_body_state_msgs::WholeBodyState
+   * @param t[in]         Time in secs
+   * @param q[in]         Configuration vector (dimension: model.nq)
+   * @param v[in]         Velocity vector (dimension: model.nv; default: zero velocity)
+   * @param tau[in]       Torque vector (dimension: model.nv; default: zero torque)
+   * @param contacts[in]  Contact-state vector (optional: if we want to write the contact information)
+   * @return The ROS message that contains the whole-body state
    * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
   whole_body_state_msgs::WholeBodyState writeToMessage(double t, const Eigen::VectorXd &q,
@@ -92,14 +117,14 @@ class WholeBodyStateInterface {
   }
 
   /**
-   * @brief Conversion from vectors to whole_body_state_msgs::WholeBodyState
+   * @brief Conversion from vectors to `whole_body_state_msgs::WholeBodyState`
    *
-   * @param msg whole_body_state_msgs::WholeBodyState (reference, will be modified)
-   * @param t Timestep
-   * @param q Configuration vector
-   * @param v Velocity vector (optional)
-   * @param tau Torque vector (optional)
-   * @param contacts ContactState vector (optional)
+   * @param msg[out]      ROS message that containts the whole-body state
+   * @param t[in]         Time in secs
+   * @param q[in]         Configuration vector (dimension: model.nq)
+   * @param v[in]         Velocity vector (dimension: model.nv; default: zero velocity)
+   * @param tau[in]       Torque vector (dimension: model.nv; default: zero torque)
+   * @param contacts[in]  Contact-state vector (optional: if we want to write the contact information)
    * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
   void toMsg(whole_body_state_msgs::WholeBodyState &msg, const double t, const Eigen::VectorXd &q,
@@ -122,6 +147,7 @@ class WholeBodyStateInterface {
                                   std::to_string(tau.size()));
     }
 
+    // Filling the time information
     msg.time = t;
     msg.header.stamp = ros::Time(t);
 
@@ -131,7 +157,6 @@ class WholeBodyStateInterface {
     } else {
       pinocchio::centerOfMass(model_, data_, q, v);
     }
-
     // Center of mass
     msg.centroidal.com_position.x = data_.com[0].x();
     msg.centroidal.com_position.y = data_.com[0].y();
@@ -147,7 +172,6 @@ class WholeBodyStateInterface {
     msg.centroidal.base_angular_velocity.x = has_velocity ? v(3) : 0.0;
     msg.centroidal.base_angular_velocity.y = has_velocity ? v(4) : 0.0;
     msg.centroidal.base_angular_velocity.z = has_velocity ? v(5) : 0.0;
-
     // Momenta
     const pinocchio::Force &momenta = pinocchio::computeCentroidalMomentum(model_, data_);
     msg.centroidal.momenta.linear.x = momenta.linear().x();
@@ -182,23 +206,18 @@ class WholeBodyStateInterface {
     for (const auto &contact_item : contacts) {
       const std::string &contact_name = contact_item.first;
       const ContactState &contact = contact_item.second;
-
       msg.contacts[i].name = contact_name;
-
       // Pose
       pinocchio::FrameIndex frame_id = model_.getFrameId(msg.contacts[i].name);
       if (static_cast<int>(frame_id) > model_.nframes) {
         throw std::runtime_error("Frame '" + contact_name + "' not found.");
       }
-
       // TODO: Option to retrieve the contact position from an argument (map)
       const pinocchio::SE3 &oMf = pinocchio::updateFramePlacement(model_, data_, frame_id);
       pinocchio::SE3::Quaternion oMf_quaternion(oMf.rotation());
-
       // TODO: Option to retrieve the contact velocity from an argument (map)
       pinocchio::Motion ovf =
           pinocchio::getFrameVelocity(model_, data_, frame_id, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
-
       // Storing the contact position and velocity inside the message
       msg.contacts[i].pose.position.x = oMf.translation().x();
       msg.contacts[i].pose.position.y = oMf.translation().y();
@@ -213,13 +232,11 @@ class WholeBodyStateInterface {
       msg.contacts[i].velocity.angular.x = ovf.angular().x();
       msg.contacts[i].velocity.angular.y = ovf.angular().y();
       msg.contacts[i].velocity.angular.z = ovf.angular().z();
-
       // Surface properties
       msg.contacts[i].friction_coefficient = contact.surface_friction;
       msg.contacts[i].surface_normal.x = contact.surface_normal.x();
       msg.contacts[i].surface_normal.y = contact.surface_normal.y();
       msg.contacts[i].surface_normal.z = contact.surface_normal.z();
-
       // Contact Force/Torque
       // msg.contacts[i].type = TODO: Type!
       msg.contacts[i].wrench.force.x = contact.force.linear().x();
@@ -228,7 +245,6 @@ class WholeBodyStateInterface {
       msg.contacts[i].wrench.torque.x = contact.force.angular().x();
       msg.contacts[i].wrench.torque.y = contact.force.angular().y();
       msg.contacts[i].wrench.torque.z = contact.force.angular().z();
-
       ++i;
     }
   }
@@ -236,12 +252,12 @@ class WholeBodyStateInterface {
   /**
    * @brief Conversion from whole_body_state_msgs::WholeBodyState to deserialized quantities
    *
-   * @param msg whole_body_state_msgs::WholeBodyState (reference, will be modified)
-   * @param t Timestep
-   * @param q Configuration vector
-   * @param v Velocity vector
-   * @param tau Torque vector
-   * @param contacts ContactState vector (optional)
+   * @param msg[in]        ROS message that contains the whole-body state
+   * @param t[out]         Time in secs
+   * @param q[out]         Configuration vector (dimension: model.nq)
+   * @param v[out]         Velocity vector (dimension: model.nv; default: zero velocity)
+   * @param tau[out]       Torque vector (dimension: model.nv; default: zero torque)
+   * @param contacts[out]  Contact-state vector(optional: if we want to write the contact information)
    * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
   void fromMsg(const whole_body_state_msgs::WholeBodyState &msg, double &t, Eigen::Ref<Eigen::VectorXd> q,
