@@ -108,7 +108,7 @@ class WholeBodyStateInterface {
    * @return The ROS message that contains the whole-body state
    * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
-  whole_body_state_msgs::WholeBodyState writeToMessage(double t, const Eigen::VectorXd &q,
+  const whole_body_state_msgs::WholeBodyState& writeToMessage(double t, const Eigen::VectorXd &q,
                                                        const Eigen::VectorXd &v = Eigen::VectorXd(),
                                                        const Eigen::VectorXd &tau = Eigen::VectorXd(),
                                                        std::unordered_map<std::string, ContactState> contacts = {}) {
