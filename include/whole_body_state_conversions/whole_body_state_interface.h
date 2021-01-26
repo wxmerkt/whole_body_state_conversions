@@ -87,7 +87,8 @@ class WholeBodyStateInterface {
    * @param[in] model     Pinocchio model
    * @param[in] frame_id  Frame name of the inertial system (default: odom)
    */
-  WholeBodyStateInterface(pinocchio::Model &model, const std::string frame_id = "odom") : model_(model), data_(model_) {
+  WholeBodyStateInterface(pinocchio::Model &model, const std::string frame_id = "odom")
+      : model_(model), data_(model_) {
     // Setup message
     msg_.header.frame_id = frame_id;
     njoints_ = model_.njoints - 2;
@@ -108,10 +109,9 @@ class WholeBodyStateInterface {
    * @return The ROS message that contains the whole-body state
    * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
-  const whole_body_state_msgs::WholeBodyState& writeToMessage(double t, const Eigen::VectorXd &q,
-                                                       const Eigen::VectorXd &v = Eigen::VectorXd(),
-                                                       const Eigen::VectorXd &tau = Eigen::VectorXd(),
-                                                       std::unordered_map<std::string, ContactState> contacts = {}) {
+  const whole_body_state_msgs::WholeBodyState &writeToMessage(
+      double t, const Eigen::VectorXd &q, const Eigen::VectorXd &v = Eigen::VectorXd(),
+      const Eigen::VectorXd &tau = Eigen::VectorXd(), std::unordered_map<std::string, ContactState> contacts = {}) {
     toMsg(msg_, t, q, v, tau, contacts);
     return msg_;
   }
