@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020, University of Oxford
+// Copyright (c) 2020-2021, University of Oxford, University of Edinburgh
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -143,6 +143,7 @@ class WholeBodyStateInterface {
     }
 
     msg.time = t;
+    msg.header.stamp = ros::Time(t);
 
     // Filling the centroidal state
     if (has_velocity) {
