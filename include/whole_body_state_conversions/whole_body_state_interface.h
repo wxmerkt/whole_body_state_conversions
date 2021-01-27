@@ -174,9 +174,9 @@ class WholeBodyStateInterface {
 
     // Filling the centroidal state
     if (has_velocity) {
-      pinocchio::centerOfMass(model_, data_, q);
-    } else {
       pinocchio::centerOfMass(model_, data_, q, v);
+    } else {
+      pinocchio::centerOfMass(model_, data_, q);
     }
     // Center of mass
     msg.centroidal.com_position.x = data_.com[0].x();
