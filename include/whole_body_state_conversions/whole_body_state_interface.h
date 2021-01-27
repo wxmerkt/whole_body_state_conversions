@@ -318,10 +318,12 @@ class WholeBodyStateInterface {
       throw std::invalid_argument("Expected msg.joints to be " + std::to_string(model_.njoints - 2) +
                                   " but received " + std::to_string(msg.joints.size()));
     }
-    if (msg.contacts.size() != contacts.size()) {
-      throw std::invalid_argument("Expected msg.contacts to be " + std::to_string(contacts.size()) + " but received " +
-                                  std::to_string(msg.contacts.size()));
-    }
+    // NB: We do not want to check contacts - they will get inserted into the map.
+    // if (msg.contacts.size() != contacts.size()) {
+    //   throw std::invalid_argument("Expected msg.contacts to be " + std::to_string(contacts.size()) + " but received
+    //   " +
+    //                               std::to_string(msg.contacts.size()));
+    // }
 
     t = msg.time;
 
