@@ -12,6 +12,7 @@
 #include <iostream>
 #include <unordered_map>
 #include <cmath>
+#include <mutex>
 
 #include <pinocchio/fwd.hpp>
 #include <pinocchio/container/aligned-vector.hpp>
@@ -167,6 +168,8 @@ class WholeBodyStateInterface {
       throw std::invalid_argument("Expected tau to be 0 or " + std::to_string(njoints_) + " but received " +
                                   std::to_string(tau.size()));
     }
+
+    std::lock_guard<std::mutex> guard(mutex_);
 
     // Filling the time information
     msg.time = t;
@@ -327,6 +330,8 @@ class WholeBodyStateInterface {
 
     t = msg.time;
 
+    std::lock_guard<std::mutex> guard(mutex_);
+
     // Retrieve the generalized position and velocity, and joint torques
     q(3) = msg.centroidal.base_orientation.x;
     q(4) = msg.centroidal.base_orientation.y;
@@ -379,6 +384,7 @@ class WholeBodyStateInterface {
   pinocchio::Model model_;  ///< Pinocchio model
   pinocchio::Data data_;    ///< Pinocchio data
   std::size_t njoints_;     ///< Number of joints
+  std::mutex mutex_;        ///< Mutex to prevent race condition on data_
 
   whole_body_state_msgs::WholeBodyState msg_;  ///< ROS message that contains the whole-body state
 
