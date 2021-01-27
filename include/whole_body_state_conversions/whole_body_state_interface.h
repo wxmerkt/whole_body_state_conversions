@@ -233,28 +233,28 @@ class WholeBodyStateInterface {
       if (static_cast<int>(frame_id) > model_.nframes) {
         throw std::runtime_error("Frame '" + contact_name + "' not found.");
       }
-      if (!isnan(contact.position.translation().norm())) {
+      if (contact.position.translation().allFinite()) {
         position_tmp_ = contact.position;
       } else {
         position_tmp_ = pinocchio::updateFramePlacement(model_, data_, frame_id);
       }
-      if (!isnan(contact.velocity.toVector().norm())) {
+      if (contact.velocity.toVector().allFinite()) {
         velocity_tmp_ = contact.velocity;
       } else {
         velocity_tmp_ =
             pinocchio::getFrameVelocity(model_, data_, frame_id, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
       }
       force_tmp_ = pinocchio::Force::Zero();
-      if (!isnan(contact.force.toVector().norm())) {
+      if (contact.force.toVector().allFinite()) {
         force_tmp_ = contact.force;
       }
-      if (!isnan(contact.surface_normal.norm())) {
+      if (contact.surface_normal.allFinite()) {
         nsurf_tmp_ = contact.surface_normal;
       } else {
         nsurf_tmp_ = Eigen::Vector3d::UnitZ();
       }
       double surface_friction = 1.;
-      if (contact.surface_friction != NAN) {
+      if (std::isfinite(contact.surface_friction)) {
         surface_friction = contact.surface_friction;
       }
       // Storing the contact position and velocity inside the message
