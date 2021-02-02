@@ -10,7 +10,7 @@
 #define WHOLE_BODY_STATE_MSGS_CONVERSIONS_H_
 
 #include <iostream>
-#include <unordered_map>
+#include <map>
 #include <cmath>
 #include <mutex>
 
@@ -73,7 +73,7 @@ struct ContactState {
   // TODO: Contact type
 };
 
-typedef std::unordered_map<std::string, whole_body_state_conversions::ContactState> ContactStateMap;
+typedef std::map<std::string, whole_body_state_conversions::ContactState> ContactStateMap;
 
 struct WholeBodyState {
  public:
@@ -87,12 +87,9 @@ struct WholeBodyState {
    *
    * @param[in] nq  Dimension of the configuration tuple
    * @param[in] nv  Dimension of the velocity vector
-   * @param[in] nc  Number of contacts
    */
-  WholeBodyState(const std::size_t nq, const std::size_t nv, const std::size_t nu, const std::size_t nc = 0)
-      : q(Eigen::VectorXd::Zero(nq)), v(Eigen::VectorXd::Zero(nv)), tau(Eigen::VectorXd(nu)) {
-    contacts.reserve(nc);
-  }
+  WholeBodyState(const std::size_t nq, const std::size_t nv, const std::size_t nu)
+      : q(Eigen::VectorXd::Zero(nq)), v(Eigen::VectorXd::Zero(nv)), tau(Eigen::VectorXd(nu)) {}
   ~WholeBodyState() = default;
 
   double t = 0.0;                                          ///< Time from start (if part of a trajectory)
@@ -133,9 +130,10 @@ class WholeBodyStateInterface {
    * @return The ROS message that contains the whole-body state
    * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
-  const whole_body_state_msgs::WholeBodyState &writeToMessage(
-      double t, const Eigen::VectorXd &q, const Eigen::VectorXd &v = Eigen::VectorXd(),
-      const Eigen::VectorXd &tau = Eigen::VectorXd(), std::unordered_map<std::string, ContactState> contacts = {}) {
+  const whole_body_state_msgs::WholeBodyState &writeToMessage(double t, const Eigen::VectorXd &q,
+                                                              const Eigen::VectorXd &v = Eigen::VectorXd(),
+                                                              const Eigen::VectorXd &tau = Eigen::VectorXd(),
+                                                              std::map<std::string, ContactState> contacts = {}) {
     toMsg(msg_, t, q, v, tau, contacts);
     return msg_;
   }
@@ -153,7 +151,7 @@ class WholeBodyStateInterface {
    */
   void toMsg(whole_body_state_msgs::WholeBodyState &msg, const double t, const Eigen::VectorXd &q,
              const Eigen::VectorXd &v = Eigen::VectorXd(), const Eigen::VectorXd &tau = Eigen::VectorXd(),
-             std::unordered_map<std::string, whole_body_state_conversions::ContactState> contacts = {}) {
+             std::map<std::string, whole_body_state_conversions::ContactState> contacts = {}) {
     if (q.size() != model_.nq) {
       throw std::invalid_argument("Expected q to be " + std::to_string(model_.nq) + " but received " +
                                   std::to_string(q.size()));
@@ -303,7 +301,7 @@ class WholeBodyStateInterface {
    */
   void fromMsg(const whole_body_state_msgs::WholeBodyState &msg, double &t, Eigen::Ref<Eigen::VectorXd> q,
                Eigen::Ref<Eigen::VectorXd> v, Eigen::Ref<Eigen::VectorXd> tau,
-               std::unordered_map<std::string, whole_body_state_conversions::ContactState> &contacts) {
+               std::map<std::string, whole_body_state_conversions::ContactState> &contacts) {
     // Check dimensions
     if (q.size() != model_.nq) {
       throw std::invalid_argument("Expected q to be " + std::to_string(model_.nq) + " but received " +
