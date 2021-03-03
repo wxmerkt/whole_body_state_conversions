@@ -70,7 +70,7 @@ struct ContactState {
       pinocchio::Force(Eigen::Vector3d(NAN, NAN, NAN), Eigen::Vector3d(NAN, NAN, NAN));  ///< Contact force
   Eigen::Vector3d surface_normal = Eigen::Vector3d(NAN, NAN, NAN);  ///< Normal vector at the contact surface
   double surface_friction;                                          ///< Friction coefficient of the contact surface
-  // TODO: Contact type
+  std::size_t type;                                                 ///< Contact type
 };
 
 typedef std::map<std::string, whole_body_state_conversions::ContactState> ContactStateMap;
