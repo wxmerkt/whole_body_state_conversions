@@ -27,6 +27,15 @@
 
 namespace whole_body_state_conversions {
 
+// Resolves to int8
+enum ContactStateEnum
+{
+    UNKNOWN = -1,
+    OPEN = 0,
+    CLOSED = 1,
+    SLIPPING = 2
+};
+
 struct ContactState {
  public:
   /**
@@ -71,6 +80,7 @@ struct ContactState {
   Eigen::Vector3d surface_normal = Eigen::Vector3d(NAN, NAN, NAN);  ///< Normal vector at the contact surface
   double surface_friction;                                          ///< Friction coefficient of the contact surface
   std::size_t type;                                                 ///< Contact type
+  ContactStateEnum state = ContactStateEnum::UNKNOWN;               ///< Classified contact state
 };
 
 typedef std::map<std::string, whole_body_state_conversions::ContactState> ContactStateMap;
