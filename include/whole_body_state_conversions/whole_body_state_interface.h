@@ -284,7 +284,6 @@ class WholeBodyStateInterface {
       msg.contacts[i].velocity.angular.y = velocity_tmp_.angular().y();
       msg.contacts[i].velocity.angular.z = velocity_tmp_.angular().z();
       msg.contacts[i].type = contact.type;
-      msg.contacts[i].contact_state = static_cast<int>(contact.state);
       msg.contacts[i].wrench.force.x = force_tmp_.linear().x();
       msg.contacts[i].wrench.force.y = force_tmp_.linear().y();
       msg.contacts[i].wrench.force.z = force_tmp_.linear().z();
@@ -295,6 +294,17 @@ class WholeBodyStateInterface {
       msg.contacts[i].surface_normal.y = nsurf_tmp_.y();
       msg.contacts[i].surface_normal.z = nsurf_tmp_.z();
       msg.contacts[i].friction_coefficient = surface_friction;
+
+      if (contact.state == whole_body_state_conversions::ContactStateEnum::UNKNOWN) {
+        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::UNKNOWN;
+      } else if (contact.state == whole_body_state_conversions::ContactStateEnum::CLOSED) {
+        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::CLOSED;
+      } else if (contact.state == whole_body_state_conversions::ContactStateEnum::OPEN) {
+        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::OPEN;
+      } else if (contact.state == whole_body_state_conversions::ContactStateEnum::SLIPPING) {
+        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::SLIPPING;
+      }
+
       ++i;
     }
   }
@@ -386,6 +396,16 @@ class WholeBodyStateInterface {
       contacts[contact.name].surface_normal.y() = contact.surface_normal.y;
       contacts[contact.name].surface_normal.z() = contact.surface_normal.z;
       contacts[contact.name].surface_friction = contact.friction_coefficient;
+      contacts[contact.name].type = contact.type;
+      if (contact.contact_state == contact.UNKNOWN) {
+        contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::UNKNOWN;
+      } else if (contact.contact_state == contact.CLOSED) {
+        contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::CLOSED;
+      } else if (contact.contact_state == contact.OPEN) {
+        contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::OPEN;
+      } else if (contact.contact_state == contact.SLIPPING) {
+        contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::SLIPPING;
+      }
     }
   }
 
