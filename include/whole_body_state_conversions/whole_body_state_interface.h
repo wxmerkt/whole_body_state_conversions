@@ -298,9 +298,9 @@ class WholeBodyStateInterface {
       if (contact.state == whole_body_state_conversions::ContactStateEnum::UNKNOWN) {
         msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::UNKNOWN;
       } else if (contact.state == whole_body_state_conversions::ContactStateEnum::CLOSED) {
-        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::CLOSED;
+        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::ACTIVE;
       } else if (contact.state == whole_body_state_conversions::ContactStateEnum::OPEN) {
-        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::OPEN;
+        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::INACTIVE;
       } else if (contact.state == whole_body_state_conversions::ContactStateEnum::SLIPPING) {
         msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::SLIPPING;
       }
@@ -399,9 +399,9 @@ class WholeBodyStateInterface {
       contacts[contact.name].type = contact.type;
       if (contact.contact_state == contact.UNKNOWN) {
         contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::UNKNOWN;
-      } else if (contact.contact_state == contact.CLOSED) {
+      } else if (contact.contact_state == contact.ACTIVE) {
         contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::CLOSED;
-      } else if (contact.contact_state == contact.OPEN) {
+      } else if (contact.contact_state == contact.INACTIVE) {
         contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::OPEN;
       } else if (contact.contact_state == contact.SLIPPING) {
         contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::SLIPPING;
