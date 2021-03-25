@@ -28,13 +28,7 @@
 namespace whole_body_state_conversions {
 
 // Resolves to int8
-enum ContactStateEnum
-{
-    UNKNOWN = -1,
-    OPEN = 0,
-    CLOSED = 1,
-    SLIPPING = 2
-};
+enum ContactStateEnum { UNKNOWN = -1, OPEN = 0, CLOSED = 1, SLIPPING = 2 };
 
 struct ContactState {
  public:
