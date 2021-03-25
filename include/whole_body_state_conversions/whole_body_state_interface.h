@@ -283,7 +283,8 @@ class WholeBodyStateInterface {
       msg.contacts[i].velocity.angular.x = velocity_tmp_.angular().x();
       msg.contacts[i].velocity.angular.y = velocity_tmp_.angular().y();
       msg.contacts[i].velocity.angular.z = velocity_tmp_.angular().z();
-      // msg.contacts[i].type = TODO: Type!
+      msg.contacts[i].type = contact.type;
+      msg.contacts[i].contact_state = static_cast<int>(contact.state);
       msg.contacts[i].wrench.force.x = force_tmp_.linear().x();
       msg.contacts[i].wrench.force.y = force_tmp_.linear().y();
       msg.contacts[i].wrench.force.z = force_tmp_.linear().z();
