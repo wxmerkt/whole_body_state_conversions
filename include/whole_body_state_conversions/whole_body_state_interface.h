@@ -91,6 +91,7 @@ struct WholeBodyState {
    *
    * @param[in] nq  Dimension of the configuration tuple
    * @param[in] nv  Dimension of the velocity vector
+   * @param[in] nu  Dimension of the control vector
    */
   WholeBodyState(const std::size_t nq, const std::size_t nv, const std::size_t nu)
       : q(Eigen::VectorXd::Zero(nq)), v(Eigen::VectorXd::Zero(nv)), tau(Eigen::VectorXd(nu)) {}
@@ -176,6 +177,8 @@ class WholeBodyStateInterface {
     // Filling the time information
     msg.time = t;
     msg.header.stamp = ros::Time(t);
+
+    pinocchio::normalize(model_, q);
 
     // Filling the centroidal state
     if (has_velocity) {
@@ -346,10 +349,12 @@ class WholeBodyStateInterface {
     std::lock_guard<std::mutex> guard(mutex_);
 
     // Retrieve the generalized position and velocity, and joint torques
+    q.head<3>().setZero();
     q(3) = msg.centroidal.base_orientation.x;
     q(4) = msg.centroidal.base_orientation.y;
     q(5) = msg.centroidal.base_orientation.z;
     q(6) = msg.centroidal.base_orientation.w;
+    v.head<3>().setZero();
     v(3) = msg.centroidal.base_angular_velocity.x;
     v(4) = msg.centroidal.base_angular_velocity.y;
     v(5) = msg.centroidal.base_angular_velocity.z;
@@ -362,6 +367,7 @@ class WholeBodyStateInterface {
       v(jointId + 6) = msg.joints[j].velocity;
       tau(jointId) = msg.joints[j].effort;
     }
+    pinocchio::normalize(model_, q);
     pinocchio::centerOfMass(model_, data_, q, v);
     q(0) = msg.centroidal.com_position.x - data_.com[0](0);
     q(1) = msg.centroidal.com_position.y - data_.com[0](1);
