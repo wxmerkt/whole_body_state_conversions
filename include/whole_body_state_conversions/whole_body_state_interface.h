@@ -28,6 +28,7 @@
 namespace whole_body_state_conversions {
 
 // Resolves to int8
+enum ContactTypeEnum { LOCOMOTION = 0, MANIPULATION = 1 };
 enum ContactStateEnum { UNKNOWN = -1, OPEN = 0, CLOSED = 1, SLIPPING = 2 };
 
 struct ContactState {
@@ -133,7 +134,6 @@ class WholeBodyStateInterface {
    * @param tau[in]       Torque vector (dimension: model.nv; default: zero torque)
    * @param contacts[in]  Contact-state vector (optional: if we want to write the contact information)
    * @return The ROS message that contains the whole-body state
-   * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
   const whole_body_state_msgs::WholeBodyState &writeToMessage(double t, const Eigen::VectorXd &q,
                                                               const Eigen::VectorXd &v = Eigen::VectorXd(),
@@ -152,7 +152,6 @@ class WholeBodyStateInterface {
    * @param v[in]         Velocity vector (dimension: model.nv; default: zero velocity)
    * @param tau[in]       Torque vector (dimension: model.nv; default: zero torque)
    * @param contacts[in]  Contact-state vector (optional: if we want to write the contact information)
-   * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
   void toMsg(whole_body_state_msgs::WholeBodyState &msg, const double t, const Eigen::VectorXd &q,
              const Eigen::VectorXd &v = Eigen::VectorXd(), const Eigen::VectorXd &tau = Eigen::VectorXd(),
@@ -396,7 +395,11 @@ class WholeBodyStateInterface {
       contacts[contact.name].surface_normal.y() = contact.surface_normal.y;
       contacts[contact.name].surface_normal.z() = contact.surface_normal.z;
       contacts[contact.name].surface_friction = contact.friction_coefficient;
-      contacts[contact.name].type = contact.type;
+      if (contact.type == contact.locomotion) {
+        contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::LOCOMOTION;
+      } else if (contact.type == contact.manipulation) {
+        contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::MANIPULATION;
+      }
       if (contact.contact_state == contact.UNKNOWN) {
         contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::UNKNOWN;
       } else if (contact.contact_state == contact.ACTIVE) {
