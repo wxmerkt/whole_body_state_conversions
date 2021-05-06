@@ -328,12 +328,12 @@ class WholeBodyStateInterface {
       throw std::invalid_argument("Expected v to be " + std::to_string(model_.nv) + " but received " +
                                   std::to_string(v.size()));
     }
-    if (tau.size() != model_.njoints - 2) {
-      throw std::invalid_argument("Expected tau to be " + std::to_string(model_.njoints - 2) + " but received " +
+    if (tau.size() != static_cast<int>(njoints_)) {
+      throw std::invalid_argument("Expected tau to be " + std::to_string(njoints_) + " but received " +
                                   std::to_string(tau.size()));
     }
-    if (msg.joints.size() != static_cast<std::size_t>(model_.njoints - 2)) {
-      throw std::invalid_argument("Expected msg.joints to be " + std::to_string(model_.njoints - 2) +
+    if (msg.joints.size() != static_cast<std::size_t>(njoints_)) {
+      throw std::invalid_argument("Expected msg.joints to be " + std::to_string(njoints_) +
                                   " but received " + std::to_string(msg.joints.size()));
     }
     // NB: We do not want to check contacts - they will get inserted into the map.
@@ -358,7 +358,7 @@ class WholeBodyStateInterface {
     v(4) = msg.centroidal.base_angular_velocity.y;
     v(5) = msg.centroidal.base_angular_velocity.z;
 
-    for (std::size_t j = 0; j < msg.joints.size(); ++j) {
+    for (std::size_t j = 0; j < njoints_; ++j) {
       // TODO: Generalize to different floating-base types!
       // TODO: Check if joint exists!
       auto jointId = model_.getJointId(msg.joints[j].name) - 2;
