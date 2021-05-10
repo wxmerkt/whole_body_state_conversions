@@ -182,7 +182,7 @@ class WholeBodyStateInterface():
             wrench = contact.wrench
             force = np.array([wrench.force.x, wrench.force.y, wrench.force.z])
             torque = np.array([wrench.torque.x, wrench.torque.y, wrench.torque.z])
-            f[name] = [contact.type, pinocchio.Force(force, torque), contact.contact_state]
+            f[name] = [contact.type, pinocchio.Force(force, torque), contact.status]
             # Surface normal and friction coefficient
             normal = contact.surface_normal
             nsurf = np.array([normal.x, normal.y, normal.z])
