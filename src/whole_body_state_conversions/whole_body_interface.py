@@ -151,7 +151,8 @@ class WholeBodyStateInterface():
         v[3] = msg.centroidal.base_angular_velocity.x
         v[4] = msg.centroidal.base_angular_velocity.y
         v[5] = msg.centroidal.base_angular_velocity.z
-        for j in range(len(msg.joints)):
+        njoints = self._model.njoints - 2
+        for j in range(njoints):
             jointId = self._model.getJointId(msg.joints[j].name) - 2
             q[jointId + 7] = msg.joints[j].position
             v[jointId + 6] = msg.joints[j].velocity

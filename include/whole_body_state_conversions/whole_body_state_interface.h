@@ -28,6 +28,7 @@
 namespace whole_body_state_conversions {
 
 // Resolves to int8
+enum ContactTypeEnum { LOCOMOTION = 0, MANIPULATION = 1 };
 enum ContactStateEnum { UNKNOWN = -1, OPEN = 0, CLOSED = 1, SLIPPING = 2 };
 
 struct ContactState {
@@ -133,7 +134,6 @@ class WholeBodyStateInterface {
    * @param tau[in]       Torque vector (dimension: model.nv; default: zero torque)
    * @param contacts[in]  Contact-state vector (optional: if we want to write the contact information)
    * @return The ROS message that contains the whole-body state
-   * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
   const whole_body_state_msgs::WholeBodyState &writeToMessage(double t, const Eigen::VectorXd &q,
                                                               const Eigen::VectorXd &v = Eigen::VectorXd(),
@@ -152,7 +152,6 @@ class WholeBodyStateInterface {
    * @param v[in]         Velocity vector (dimension: model.nv; default: zero velocity)
    * @param tau[in]       Torque vector (dimension: model.nv; default: zero torque)
    * @param contacts[in]  Contact-state vector (optional: if we want to write the contact information)
-   * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
   void toMsg(whole_body_state_msgs::WholeBodyState &msg, const double t, const Eigen::VectorXd &q,
              const Eigen::VectorXd &v = Eigen::VectorXd(), const Eigen::VectorXd &tau = Eigen::VectorXd(),
@@ -329,13 +328,13 @@ class WholeBodyStateInterface {
       throw std::invalid_argument("Expected v to be " + std::to_string(model_.nv) + " but received " +
                                   std::to_string(v.size()));
     }
-    if (tau.size() != model_.njoints - 2) {
-      throw std::invalid_argument("Expected tau to be " + std::to_string(model_.njoints - 2) + " but received " +
+    if (tau.size() != static_cast<int>(njoints_)) {
+      throw std::invalid_argument("Expected tau to be " + std::to_string(njoints_) + " but received " +
                                   std::to_string(tau.size()));
     }
-    if (msg.joints.size() != static_cast<std::size_t>(model_.njoints - 2)) {
-      throw std::invalid_argument("Expected msg.joints to be " + std::to_string(model_.njoints - 2) +
-                                  " but received " + std::to_string(msg.joints.size()));
+    if (msg.joints.size() != static_cast<std::size_t>(njoints_)) {
+      throw std::invalid_argument("Expected msg.joints to be " + std::to_string(njoints_) + " but received " +
+                                  std::to_string(msg.joints.size()));
     }
     // NB: We do not want to check contacts - they will get inserted into the map.
     // if (msg.contacts.size() != contacts.size()) {
@@ -359,7 +358,7 @@ class WholeBodyStateInterface {
     v(4) = msg.centroidal.base_angular_velocity.y;
     v(5) = msg.centroidal.base_angular_velocity.z;
 
-    for (std::size_t j = 0; j < msg.joints.size(); ++j) {
+    for (std::size_t j = 0; j < njoints_; ++j) {
       // TODO: Generalize to different floating-base types!
       // TODO: Check if joint exists!
       auto jointId = model_.getJointId(msg.joints[j].name) - 2;
@@ -396,7 +395,11 @@ class WholeBodyStateInterface {
       contacts[contact.name].surface_normal.y() = contact.surface_normal.y;
       contacts[contact.name].surface_normal.z() = contact.surface_normal.z;
       contacts[contact.name].surface_friction = contact.friction_coefficient;
-      contacts[contact.name].type = contact.type;
+      if (contact.type == contact.locomotion) {
+        contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::LOCOMOTION;
+      } else if (contact.type == contact.manipulation) {
+        contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::MANIPULATION;
+      }
       if (contact.contact_state == contact.UNKNOWN) {
         contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::UNKNOWN;
       } else if (contact.contact_state == contact.ACTIVE) {
