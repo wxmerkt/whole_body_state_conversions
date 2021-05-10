@@ -292,13 +292,13 @@ class WholeBodyStateInterface {
       msg.contacts[i].friction_coefficient = surface_friction;
 
       if (contact.state == whole_body_state_conversions::ContactStateEnum::UNKNOWN) {
-        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::UNKNOWN;
+        msg.contacts[i].status = whole_body_state_msgs::ContactState::UNKNOWN;
       } else if (contact.state == whole_body_state_conversions::ContactStateEnum::CLOSED) {
-        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::ACTIVE;
+        msg.contacts[i].status = whole_body_state_msgs::ContactState::ACTIVE;
       } else if (contact.state == whole_body_state_conversions::ContactStateEnum::OPEN) {
-        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::INACTIVE;
+        msg.contacts[i].status = whole_body_state_msgs::ContactState::INACTIVE;
       } else if (contact.state == whole_body_state_conversions::ContactStateEnum::SLIPPING) {
-        msg.contacts[i].contact_state = whole_body_state_msgs::ContactState::SLIPPING;
+        msg.contacts[i].status = whole_body_state_msgs::ContactState::SLIPPING;
       }
 
       ++i;
@@ -395,18 +395,18 @@ class WholeBodyStateInterface {
       contacts[contact.name].surface_normal.y() = contact.surface_normal.y;
       contacts[contact.name].surface_normal.z() = contact.surface_normal.z;
       contacts[contact.name].surface_friction = contact.friction_coefficient;
-      if (contact.type == contact.locomotion) {
+      if (contact.type == contact.LOCOMOTION) {
         contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::LOCOMOTION;
-      } else if (contact.type == contact.manipulation) {
+      } else if (contact.type == contact.MANIPULATION) {
         contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::MANIPULATION;
       }
-      if (contact.contact_state == contact.UNKNOWN) {
+      if (contact.status == contact.UNKNOWN) {
         contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::UNKNOWN;
-      } else if (contact.contact_state == contact.ACTIVE) {
+      } else if (contact.status == contact.ACTIVE) {
         contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::CLOSED;
-      } else if (contact.contact_state == contact.INACTIVE) {
+      } else if (contact.status == contact.INACTIVE) {
         contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::OPEN;
-      } else if (contact.contact_state == contact.SLIPPING) {
+      } else if (contact.status == contact.SLIPPING) {
         contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::SLIPPING;
       }
     }
