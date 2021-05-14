@@ -115,7 +115,7 @@ class WholeBodyStateInterface {
    * @param[in] frame_id  Frame name of the inertial system (default: odom)
    */
   WholeBodyStateInterface(pinocchio::Model &model, const std::string frame_id = "odom")
-      : model_(model), data_(model_) {
+      : model_(model), data_(model_), frame_id_(frame_id) {
     // Setup message
     msg_.header.frame_id = frame_id;
     njoints_ = model_.njoints - 2;
@@ -176,6 +176,7 @@ class WholeBodyStateInterface {
     // Filling the time information
     msg.time = t;
     msg.header.stamp = ros::Time(t);
+    msg.header.frame_id = frame_id_;
 
     pinocchio::normalize(model_, q);
 
@@ -412,11 +413,14 @@ class WholeBodyStateInterface {
     }
   }
 
+  const std::string &get_frame_id() const { return frame_id_; }
+
  private:
   pinocchio::Model model_;  ///< Pinocchio model
   pinocchio::Data data_;    ///< Pinocchio data
   std::size_t njoints_;     ///< Number of joints
   std::mutex mutex_;        ///< Mutex to prevent race condition on data_
+  std::string frame_id_;    ///< Fixed frame name
 
   whole_body_state_msgs::WholeBodyState msg_;  ///< ROS message that contains the whole-body state
 
