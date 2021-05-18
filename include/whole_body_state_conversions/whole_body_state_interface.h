@@ -33,6 +33,8 @@ enum ContactStateEnum { UNKNOWN = -1, OPEN = 0, CLOSED = 1, SLIPPING = 2 };
 
 struct ContactState {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   /**
    * @brief Initialize the data structure for the contact state
    */
@@ -82,6 +84,8 @@ typedef std::map<std::string, whole_body_state_conversions::ContactState> Contac
 
 struct WholeBodyState {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   /**
    * @brief Initialize the data structure for the whole-body state
    */
@@ -108,6 +112,8 @@ struct WholeBodyState {
 
 class WholeBodyStateInterface {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   /**
    * @brief Initialize the interface for the whole-body state
    *
