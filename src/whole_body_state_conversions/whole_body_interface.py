@@ -170,8 +170,14 @@ class WholeBodyStateInterface():
             # Contact pose
             pose = contact.pose
             position = np.array([pose.position.x, pose.position.y, pose.position.z])
-            quaternion = pinocchio.Quaternion(pose.orientation.w, pose.orientation.x, pose.orientation.y,
-                                              pose.orientation.z)
+            #TODO(cmastalli) a temporal solution that fixes issue #231 of eigenpy
+            quaternion = pinocchio.Quaternion.Identity()
+            quaternion.w = pose.orientation.w
+            quaternion.x = pose.orientation.x
+            quaternion.y = pose.orientation.y
+            quaternion.z = pose.orientation.z
+            # quaternion = pinocchio.Quaternion(pose.orientation.w, pose.orientation.x, pose.orientation.y,
+            #                                   pose.orientation.z)
             p[name] = pinocchio.SE3(quaternion, position)
             # Contact velocity
             velocity = contact.velocity
