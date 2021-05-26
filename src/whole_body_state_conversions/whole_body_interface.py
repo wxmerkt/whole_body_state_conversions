@@ -86,13 +86,13 @@ class WholeBodyStateInterface():
             contact_msg.name = name
             frame_id = self._model.getFrameId(name)
             # Retrive the contact position
-            if "name" in p.keys():
+            if name in p:
                 pose = pinocchio.SE3ToXYZQUAT(p[name])
             else:
                 oMf = pinocchio.updateFramePlacement(self._model, self._data, frame_id)
                 pose = pinocchio.SE3ToXYZQUAT(oMf)
             # Retrieve the contact velocity
-            if "name" in pd.keys():
+            if name in pd:
                 ovf = pd[name]
             else:
                 ovf = pinocchio.getFrameVelocity(self._model, self._data, frame_id,
@@ -112,7 +112,7 @@ class WholeBodyStateInterface():
             contact_msg.velocity.angular.y = ovf.angular[1]
             contact_msg.velocity.angular.z = ovf.angular[2]
             # Retrieving and storing force data
-            if "name" in f.keys():
+            if name in f:
                 contact_info = f[name]
                 ctype = contact_info[0]
                 force = contact_info[1]
@@ -123,7 +123,7 @@ class WholeBodyStateInterface():
                 contact_msg.wrench.torque.x = force.angular[0]
                 contact_msg.wrench.torque.y = force.angular[1]
                 contact_msg.wrench.torque.z = force.angular[2]
-            if "name" in s.keys():
+            if name in s:
                 terrain_info = s[name]
                 norm = terrain_info[0]
                 friction = terrain_info[1]
