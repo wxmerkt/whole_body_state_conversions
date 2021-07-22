@@ -99,12 +99,16 @@ struct WholeBodyState {
    * @param[in] nu  Dimension of the control vector
    */
   WholeBodyState(const std::size_t nq, const std::size_t nv, const std::size_t nu)
-      : q(Eigen::VectorXd::Zero(nq)), v(Eigen::VectorXd::Zero(nv)), tau(Eigen::VectorXd(nu)) {}
+      : q(Eigen::VectorXd::Zero(nq)),
+        v(Eigen::VectorXd::Zero(nv)),
+        a(Eigen::VectorXd::Zero(nv)),
+        tau(Eigen::VectorXd(nu)) {}
   ~WholeBodyState() = default;
 
   double t = 0.0;                                          ///< Time from start (if part of a trajectory)
   Eigen::VectorXd q;                                       ///< Configuration vector (size nq)
   Eigen::VectorXd v;                                       ///< Tangent vector (size nv)
+  Eigen::VectorXd a;                                       ///< System acceleration vector (size nv)
   Eigen::VectorXd tau;                                     ///< Torque vector (size njoints-2)
   whole_body_state_conversions::ContactStateMap contacts;  ///< Contact state (p, pd, f, s)
                                                            // p, pd, f, s - or ContactState!
@@ -137,15 +141,17 @@ class WholeBodyStateInterface {
    * @param t[in]         Time in secs
    * @param q[in]         Configuration vector (dimension: model.nq)
    * @param v[in]         Velocity vector (dimension: model.nv; default: zero velocity)
+   * @param a[in]         Acceleration vector (dimension: model.nv; default: zero acceleration)
    * @param tau[in]       Torque vector (dimension: model.nv; default: zero torque)
    * @param contacts[in]  Contact-state vector (optional: if we want to write the contact information)
    * @return The ROS message that contains the whole-body state
    */
   const whole_body_state_msgs::WholeBodyState &writeToMessage(double t, const Eigen::VectorXd &q,
                                                               const Eigen::VectorXd &v = Eigen::VectorXd(),
+                                                              const Eigen::VectorXd &a = Eigen::VectorXd(),
                                                               const Eigen::VectorXd &tau = Eigen::VectorXd(),
                                                               std::map<std::string, ContactState> contacts = {}) {
-    toMsg(msg_, t, q, v, tau, contacts);
+    toMsg(msg_, t, q, v, a, tau, contacts);
     return msg_;
   }
 
@@ -156,23 +162,30 @@ class WholeBodyStateInterface {
    * @param t[in]         Time in secs
    * @param q[in]         Configuration vector (dimension: model.nq)
    * @param v[in]         Velocity vector (dimension: model.nv; default: zero velocity)
+   * @param a[in]         Acceleration vector (dimension: model.nv; default: zero acceleration)
    * @param tau[in]       Torque vector (dimension: model.nv; default: zero torque)
    * @param contacts[in]  Contact-state vector (optional: if we want to write the contact information)
    */
   void toMsg(whole_body_state_msgs::WholeBodyState &msg, const double t, const Eigen::VectorXd &q,
-             const Eigen::VectorXd &v = Eigen::VectorXd(), const Eigen::VectorXd &tau = Eigen::VectorXd(),
+             const Eigen::VectorXd &v = Eigen::VectorXd(), const Eigen::VectorXd &a = Eigen::VectorXd(),
+             const Eigen::VectorXd &tau = Eigen::VectorXd(),
              std::map<std::string, whole_body_state_conversions::ContactState> contacts = {}) {
     if (q.size() != model_.nq) {
       throw std::invalid_argument("Expected q to be " + std::to_string(model_.nq) + " but received " +
                                   std::to_string(q.size()));
     }
     bool has_velocity = v.size() != 0;
-    if (v.size() != 0 && v.size() != model_.nv) {
+    if (has_velocity && v.size() != model_.nv) {
       throw std::invalid_argument("Expected v to be 0 or " + std::to_string(model_.nv) + " but received " +
                                   std::to_string(v.size()));
     }
+    bool has_acceleration = a.size() != 0;
+    if (has_acceleration && v.size() != model_.nv) {
+      throw std::invalid_argument("Expected a to be 0 or " + std::to_string(model_.nv) + " but received " +
+                                  std::to_string(a.size()));
+    }
     bool has_torque = tau.size() != 0;
-    if (tau.size() != 0 && static_cast<std::size_t>(tau.size()) != njoints_) {
+    if (has_torque && static_cast<std::size_t>(tau.size()) != njoints_) {
       throw std::invalid_argument("Expected tau to be 0 or " + std::to_string(njoints_) + " but received " +
                                   std::to_string(tau.size()));
     }
@@ -231,6 +244,7 @@ class WholeBodyStateInterface {
       msg.joints[j].name = model_.names[2 + j];
       msg.joints[j].position = q(model_.joints[1].nq() + j);
       msg.joints[j].velocity = has_velocity ? v(model_.joints[1].nv() + j) : 0.0;
+      msg.joints[j].acceleration = has_acceleration ? a(model_.joints[1].nv() + j) : 0.0;
       msg.joints[j].effort = has_torque ? tau(j) : 0.0;
     }
 
@@ -319,12 +333,13 @@ class WholeBodyStateInterface {
    * @param t[out]         Time in secs
    * @param q[out]         Configuration vector (dimension: model.nq)
    * @param v[out]         Velocity vector (dimension: model.nv; default: zero velocity)
+   * @param a[out]         Acceleration vector (dimension: model.nv; default: zero acceleration)
    * @param tau[out]       Torque vector (dimension: model.nv; default: zero torque)
    * @param contacts[out]  Contact-state vector(optional: if we want to write the contact information)
    * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
   void fromMsg(const whole_body_state_msgs::WholeBodyState &msg, double &t, Eigen::Ref<Eigen::VectorXd> q,
-               Eigen::Ref<Eigen::VectorXd> v, Eigen::Ref<Eigen::VectorXd> tau,
+               Eigen::Ref<Eigen::VectorXd> a, Eigen::Ref<Eigen::VectorXd> v, Eigen::Ref<Eigen::VectorXd> tau,
                std::map<std::string, whole_body_state_conversions::ContactState> &contacts) {
     // Check dimensions
     if (q.size() != model_.nq) {
@@ -333,6 +348,10 @@ class WholeBodyStateInterface {
     }
     if (v.size() != model_.nv) {
       throw std::invalid_argument("Expected v to be " + std::to_string(model_.nv) + " but received " +
+                                  std::to_string(v.size()));
+    }
+    if (a.size() != model_.nv) {
+      throw std::invalid_argument("Expected a to be " + std::to_string(model_.nv) + " but received " +
                                   std::to_string(v.size()));
     }
     if (tau.size() != static_cast<int>(njoints_)) {
@@ -371,6 +390,7 @@ class WholeBodyStateInterface {
       auto jointId = model_.getJointId(msg.joints[j].name) - 2;
       q(jointId + 7) = msg.joints[j].position;
       v(jointId + 6) = msg.joints[j].velocity;
+      a(jointId + 6) = msg.joints[j].acceleration;
       tau(jointId) = msg.joints[j].effort;
     }
     pinocchio::normalize(model_, q);
