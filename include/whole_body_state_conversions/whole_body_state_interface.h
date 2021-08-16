@@ -146,10 +146,11 @@ class WholeBodyStateInterface {
    * @param contacts[in]  Contact-state vector (optional: if we want to write the contact information)
    * @return The ROS message that contains the whole-body state
    */
-  const whole_body_state_msgs::WholeBodyState &writeToMessage(double t, const Eigen::VectorXd &q,
-                                                              const Eigen::VectorXd &v = Eigen::VectorXd(),
-                                                              const Eigen::VectorXd &a = Eigen::VectorXd(),
-                                                              const Eigen::VectorXd &tau = Eigen::VectorXd(),
+  const whole_body_state_msgs::WholeBodyState &writeToMessage(double t,
+                                                              const Eigen::Ref<const Eigen::VectorXd> &q,
+                                                              const Eigen::Ref<const Eigen::VectorXd> &v = Eigen::VectorXd(),
+                                                              const Eigen::Ref<const Eigen::VectorXd> &a = Eigen::VectorXd(),
+                                                              const Eigen::Ref<const Eigen::VectorXd> &tau = Eigen::VectorXd(),
                                                               std::map<std::string, ContactState> contacts = {}) {
     toMsg(msg_, t, q, v, a, tau, contacts);
     return msg_;
@@ -166,9 +167,12 @@ class WholeBodyStateInterface {
    * @param tau[in]       Torque vector (dimension: model.nv; default: zero torque)
    * @param contacts[in]  Contact-state vector (optional: if we want to write the contact information)
    */
-  void toMsg(whole_body_state_msgs::WholeBodyState &msg, const double t, const Eigen::VectorXd &q,
-             const Eigen::VectorXd &v = Eigen::VectorXd(), const Eigen::VectorXd &a = Eigen::VectorXd(),
-             const Eigen::VectorXd &tau = Eigen::VectorXd(),
+  void toMsg(whole_body_state_msgs::WholeBodyState &msg,
+             const double t,
+             const Eigen::Ref<const Eigen::VectorXd> &q,
+             const Eigen::Ref<const Eigen::VectorXd> &v = Eigen::VectorXd(),
+             const Eigen::Ref<const Eigen::VectorXd> &a = Eigen::VectorXd(),
+             const Eigen::Ref<const Eigen::VectorXd> &tau = Eigen::VectorXd(),
              std::map<std::string, whole_body_state_conversions::ContactState> contacts = {}) {
     if (q.size() != model_.nq) {
       throw std::invalid_argument("Expected q to be " + std::to_string(model_.nq) + " but received " +
@@ -197,7 +201,7 @@ class WholeBodyStateInterface {
     msg.header.stamp = ros::Time(t);
     msg.header.frame_id = frame_id_;
 
-    pinocchio::normalize(model_, q);
+    // pinocchio::normalize(model_, q); <-- const-ref, we can't do this!
 
     // Filling the centroidal state
     if (has_velocity) {
@@ -338,8 +342,12 @@ class WholeBodyStateInterface {
    * @param contacts[out]  Contact-state vector(optional: if we want to write the contact information)
    * @note TODO: Contact type and contact location / velocity are not yet supported.
    */
-  void fromMsg(const whole_body_state_msgs::WholeBodyState &msg, double &t, Eigen::Ref<Eigen::VectorXd> q,
-               Eigen::Ref<Eigen::VectorXd> a, Eigen::Ref<Eigen::VectorXd> v, Eigen::Ref<Eigen::VectorXd> tau,
+  void fromMsg(const whole_body_state_msgs::WholeBodyState &msg,
+               double &t,
+               Eigen::Ref<Eigen::VectorXd> q,
+               Eigen::Ref<Eigen::VectorXd> v,
+               Eigen::Ref<Eigen::VectorXd> a,
+               Eigen::Ref<Eigen::VectorXd> tau,
                std::map<std::string, whole_body_state_conversions::ContactState> &contacts) {
     // Check dimensions
     if (q.size() != model_.nq) {
