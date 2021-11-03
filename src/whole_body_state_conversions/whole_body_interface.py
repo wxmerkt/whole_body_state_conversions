@@ -123,6 +123,8 @@ class WholeBodyStateInterface():
                 contact_msg.wrench.torque.x = force.angular[0]
                 contact_msg.wrench.torque.y = force.angular[1]
                 contact_msg.wrench.torque.z = force.angular[2]
+                if np.linalg.norm(force.linear) > 0.:
+                    contact_msg.status = 2
             if name in s:
                 terrain_info = s[name]
                 norm = terrain_info[0]
