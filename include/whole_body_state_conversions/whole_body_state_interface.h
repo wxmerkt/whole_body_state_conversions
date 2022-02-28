@@ -29,7 +29,7 @@ namespace whole_body_state_conversions {
 
 // Resolves to int8
 enum ContactTypeEnum { LOCOMOTION = 0, MANIPULATION = 1 };
-enum ContactStateEnum { UNKNOWN = -1, OPEN = 0, CLOSED = 1, SLIPPING = 2 };
+enum ContactStateEnum { UNKNOWN = 0, OPEN = 1, CLOSED = 2, SLIPPING = 3 };
 
 struct ContactState {
  public:
