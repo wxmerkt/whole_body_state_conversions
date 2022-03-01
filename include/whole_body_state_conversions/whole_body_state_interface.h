@@ -430,24 +430,24 @@ class WholeBodyStateInterface {
       contacts[contact.name].surface_normal.z() = contact.surface_normal.z;
       contacts[contact.name].surface_friction = contact.friction_coefficient;
       switch (contact.type) {
-        case contact.LOCOMOTION:
+        case whole_body_state_msgs::ContactState::LOCOMOTION:
           contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::LOCOMOTION;
           break;
-        case contact.MANIPULATION:
+        case whole_body_state_msgs::ContactState::MANIPULATION:
           contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::MANIPULATION;
           break;
       }
       switch (contact.status) {
-        case contact.UNKNOWN:
+        case whole_body_state_msgs::ContactState::UNKNOWN:
           contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::UNKNOWN;
           break;
-        case contact.ACTIVE:
+        case whole_body_state_msgs::ContactState::ACTIVE:
           contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::CLOSED;
           break;
-        case contact.INACTIVE:
+        case whole_body_state_msgs::ContactState::INACTIVE:
           contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::OPEN;
           break;
-        case contact.SLIPPING:
+        case whole_body_state_msgs::ContactState::SLIPPING:
           contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::SLIPPING;
           break;
       }
