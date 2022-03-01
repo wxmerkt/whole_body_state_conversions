@@ -76,7 +76,7 @@ struct ContactState {
       pinocchio::Force(Eigen::Vector3d(NAN, NAN, NAN), Eigen::Vector3d(NAN, NAN, NAN));  ///< Contact force
   Eigen::Vector3d surface_normal = Eigen::Vector3d(NAN, NAN, NAN);  ///< Normal vector at the contact surface
   double surface_friction;                                          ///< Friction coefficient of the contact surface
-  std::size_t type;                                                 ///< Contact type
+  ContactTypeEnum type = ContactTypeEnum::LOCOMOTION;               ///< Contact type
   ContactStateEnum state = ContactStateEnum::UNKNOWN;               ///< Classified contact state
 };
 
@@ -429,19 +429,27 @@ class WholeBodyStateInterface {
       contacts[contact.name].surface_normal.y() = contact.surface_normal.y;
       contacts[contact.name].surface_normal.z() = contact.surface_normal.z;
       contacts[contact.name].surface_friction = contact.friction_coefficient;
-      if (contact.type == contact.LOCOMOTION) {
-        contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::LOCOMOTION;
-      } else if (contact.type == contact.MANIPULATION) {
-        contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::MANIPULATION;
+      switch (contact.type) {
+        case contact.LOCOMOTION:
+          contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::LOCOMOTION;
+          break;
+        case contact.MANIPULATION:
+          contacts[contact.name].type = whole_body_state_conversions::ContactTypeEnum::MANIPULATION;
+          break;
       }
-      if (contact.status == contact.UNKNOWN) {
-        contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::UNKNOWN;
-      } else if (contact.status == contact.ACTIVE) {
-        contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::CLOSED;
-      } else if (contact.status == contact.INACTIVE) {
-        contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::OPEN;
-      } else if (contact.status == contact.SLIPPING) {
-        contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::SLIPPING;
+      switch (contact.status) {
+        case contact.UNKNOWN:
+          contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::UNKNOWN;
+          break;
+        case contact.ACTIVE:
+          contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::CLOSED;
+          break;
+        case contact.INACTIVE:
+          contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::OPEN;
+          break;
+        case contact.SLIPPING:
+          contacts[contact.name].state = whole_body_state_conversions::ContactStateEnum::SLIPPING;
+          break;
       }
     }
   }
