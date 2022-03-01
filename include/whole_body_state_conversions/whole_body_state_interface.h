@@ -314,14 +314,19 @@ class WholeBodyStateInterface {
       msg.contacts[i].surface_normal.z = nsurf_tmp_.z();
       msg.contacts[i].friction_coefficient = surface_friction;
 
-      if (contact.state == whole_body_state_conversions::ContactStateEnum::UNKNOWN) {
-        msg.contacts[i].status = whole_body_state_msgs::ContactState::UNKNOWN;
-      } else if (contact.state == whole_body_state_conversions::ContactStateEnum::CLOSED) {
-        msg.contacts[i].status = whole_body_state_msgs::ContactState::ACTIVE;
-      } else if (contact.state == whole_body_state_conversions::ContactStateEnum::OPEN) {
-        msg.contacts[i].status = whole_body_state_msgs::ContactState::INACTIVE;
-      } else if (contact.state == whole_body_state_conversions::ContactStateEnum::SLIPPING) {
-        msg.contacts[i].status = whole_body_state_msgs::ContactState::SLIPPING;
+      switch (contact.state) {
+        case whole_body_state_conversions::ContactStateEnum::UNKNOWN:
+          msg.contacts[i].status = whole_body_state_msgs::ContactState::UNKNOWN;
+          break;
+        case whole_body_state_conversions::ContactStateEnum::OPEN:
+          msg.contacts[i].status = whole_body_state_msgs::ContactState::INACTIVE;
+          break;
+        case whole_body_state_conversions::ContactStateEnum::CLOSED:
+          msg.contacts[i].status = whole_body_state_msgs::ContactState::ACTIVE;
+          break;
+        case whole_body_state_conversions::ContactStateEnum::SLIPPING:
+          msg.contacts[i].status = whole_body_state_msgs::ContactState::SLIPPING;
+          break;
       }
 
       ++i;
