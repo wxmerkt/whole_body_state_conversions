@@ -408,6 +408,7 @@ class WholeBodyStateInterface {
     v(0) = msg.centroidal.com_velocity.x - data_.vcom[0](0);
     v(1) = msg.centroidal.com_velocity.y - data_.vcom[0](1);
     v(2) = msg.centroidal.com_velocity.z - data_.vcom[0](2);
+    v.head<3>() = Eigen::Quaterniond(q(6), q(3), q(4), q(5)).toRotationMatrix().transpose() * v.head<3>(); // local frame
 
     // Retrieve the contact information
     for (const auto &contact : msg.contacts) {
