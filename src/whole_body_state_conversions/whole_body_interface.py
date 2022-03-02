@@ -169,6 +169,7 @@ class WholeBodyStateInterface():
         v[0] = msg.centroidal.com_velocity.x - self._data.vcom[0][0]
         v[1] = msg.centroidal.com_velocity.y - self._data.vcom[0][1]
         v[2] = msg.centroidal.com_velocity.z - self._data.vcom[0][2]
+        v[:3] = np.dot(pinocchio.Quaternion(q[3:7]).toRotationMatrix().T, v[:3]) # local frame
         # Retrive the contact information
         for contact in msg.contacts:
             name = contact.name

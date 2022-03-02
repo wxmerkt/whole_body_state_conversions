@@ -211,9 +211,12 @@ class WholeBodyStateInterface {
     msg.centroidal.com_position.x = data_.com[0].x();
     msg.centroidal.com_position.y = data_.com[0].y();
     msg.centroidal.com_position.z = data_.com[0].z();
-    msg.centroidal.com_velocity.x = has_velocity ? data_.vcom[0].x() : 0.0;
-    msg.centroidal.com_velocity.y = has_velocity ? data_.vcom[0].y() : 0.0;
-    msg.centroidal.com_velocity.z = has_velocity ? data_.vcom[0].z() : 0.0;
+    msg.centroidal.com_velocity.x =
+        has_velocity ? data_.vcom[0].x() : 0.0;  // Velocity of the CoM expressed in the global frame.
+    msg.centroidal.com_velocity.y =
+        has_velocity ? data_.vcom[0].y() : 0.0;  // Velocity of the CoM expressed in the global frame.
+    msg.centroidal.com_velocity.z =
+        has_velocity ? data_.vcom[0].z() : 0.0;  // Velocity of the CoM expressed in the global frame.
     // Base
     msg.centroidal.base_orientation.x = q(3);
     msg.centroidal.base_orientation.y = q(4);
@@ -405,9 +408,12 @@ class WholeBodyStateInterface {
     q(0) = msg.centroidal.com_position.x - data_.com[0](0);
     q(1) = msg.centroidal.com_position.y - data_.com[0](1);
     q(2) = msg.centroidal.com_position.z - data_.com[0](2);
-    v(0) = msg.centroidal.com_velocity.x - data_.vcom[0](0);
+    v(0) = msg.centroidal.com_velocity.x -
+           data_.vcom[0](0);  // This is stored in the global frame in the message / data_.vcom[0]
     v(1) = msg.centroidal.com_velocity.y - data_.vcom[0](1);
     v(2) = msg.centroidal.com_velocity.z - data_.vcom[0](2);
+    v.head<3>() =
+        Eigen::Quaterniond(q(6), q(3), q(4), q(5)).toRotationMatrix().transpose() * v.head<3>();  // local frame
 
     // Retrieve the contact information
     for (const auto &contact : msg.contacts) {
